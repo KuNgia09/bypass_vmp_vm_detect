@@ -28,6 +28,23 @@ ULONG_PTR g_diasmBranchBuffer=0;
 int g_diasmBranchIndex=0;
 
 
+
+VOID
+Print(
+	_In_ PCCH Format,
+	_In_ ...
+)
+{
+	CHAR message[512];
+	va_list argList;
+	va_start(argList, Format);
+	const int n = _vsnprintf_s(message, sizeof(message), sizeof(message) - 1, Format, argList);
+	message[n] = '\0';
+	vDbgPrintExWithPrefix("[TK] ", DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, message, argList);
+	va_end(argList);
+}
+
+
 void* UtilGetSystemProcAddress(
 	const wchar_t* proc_name) {
 	PAGED_CODE();
@@ -73,6 +90,7 @@ VOID RemoveSigs(PVOID FirmwareBuffer, ULONG FirmwareBufferLength, const char* Si
 
 
 NTSTATUS __cdecl  MyACPIHandler(PSYSTEM_FIRMWARE_TABLE_INFORMATION SystemFirmwareTableInfo) {
+	Print("check FirmwareTable ACPI Signature\n");
 	auto st = g_OriginalACPIHandler(SystemFirmwareTableInfo);
 
 	if (st == STATUS_SUCCESS && SystemFirmwareTableInfo->Action == 1)
@@ -84,6 +102,7 @@ NTSTATUS __cdecl  MyACPIHandler(PSYSTEM_FIRMWARE_TABLE_INFORMATION SystemFirmwar
 }
 
 NTSTATUS __cdecl  MyRSMBHandler(PSYSTEM_FIRMWARE_TABLE_INFORMATION SystemFirmwareTableInfo) {
+	Print("check FirmwareTable RSMB Signature\n");
 	auto st = g_OriginalACPIHandler(SystemFirmwareTableInfo);
 
 	if (st == STATUS_SUCCESS && SystemFirmwareTableInfo->Action == 1)
@@ -95,6 +114,7 @@ NTSTATUS __cdecl  MyRSMBHandler(PSYSTEM_FIRMWARE_TABLE_INFORMATION SystemFirmwar
 }
 
 NTSTATUS __cdecl  MyFIRMHandler(PSYSTEM_FIRMWARE_TABLE_INFORMATION SystemFirmwareTableInfo) {
+	Print("check FirmwareTable FIRM Signature\n");
 	auto st = g_OriginalACPIHandler(SystemFirmwareTableInfo);
 
 	if (st == STATUS_SUCCESS && SystemFirmwareTableInfo->Action == 1)
@@ -105,21 +125,6 @@ NTSTATUS __cdecl  MyFIRMHandler(PSYSTEM_FIRMWARE_TABLE_INFORMATION SystemFirmwar
 	return st;
 }
 
-
-VOID
-Print(
-	_In_ PCCH Format,
-	_In_ ...
-)
-{
-	CHAR message[512];
-	va_list argList;
-	va_start(argList, Format);
-	const int n = _vsnprintf_s(message, sizeof(message), sizeof(message) - 1, Format, argList);
-	message[n] = '\0';
-	vDbgPrintExWithPrefix("[TK] ", DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, message, argList);
-	va_end(argList);
-}
 
 
 
