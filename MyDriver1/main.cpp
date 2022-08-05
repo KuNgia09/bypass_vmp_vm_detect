@@ -129,7 +129,7 @@ Print(
 	va_start(argList, Format);
 	const int n = _vsnprintf_s(message, sizeof(message), sizeof(message) - 1, Format, argList);
 	message[n] = '\0';
-	vDbgPrintExWithPrefix("[ZYDIS] ", DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, message, argList);
+	vDbgPrintExWithPrefix("[TK] ", DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, message, argList);
 	va_end(argList);
 }
 
@@ -421,11 +421,11 @@ extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_
 	UNREFERENCED_PARAMETER(RegistryPath);
 
 	DriverObject->DriverUnload = SampleUnload;
-	KdPrint(("Sample driver initialized successfully\n"));
+	
 
 	PVOID checkPtr = UtilGetSystemProcAddress(L"NtOpenFile");
 
-	KdPrintEx((DPFLTR_DEFAULT_ID, DPFLTR_INFO_LEVEL, "DPFLTR_INFO_LEVEL\n"));
+	
 
 
 	Print("NtOpenFile address:%p\n", checkPtr);
@@ -433,7 +433,7 @@ extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_
 	EnumSystemModules(GetKernelInfo, checkPtr);
 
 	if (!g_NtosBase) {
-		DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_ERROR_LEVEL, "ntos base not found!\n");
+		Print("ntos base not found!\n");
 		return STATUS_UNSUCCESSFUL;
 	}
 	else {
@@ -442,7 +442,7 @@ extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_
 
 	PIMAGE_NT_HEADERS NtHeader = RtlImageNtHeader(g_NtosBase);
 	if (!NtHeader) {
-		DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_ERROR_LEVEL, "ntos ntheader not found!\n");
+		Print("ntos ntheader not found!\n");
 		return STATUS_UNSUCCESSFUL;
 	}
 
@@ -463,7 +463,7 @@ extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_
 	}
 
 	if (!PAGEBase) {
-		DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_ERROR_LEVEL, "PAGE section not found!\n");
+		Print("PAGE section not found!\n");
 		return STATUS_UNSUCCESSFUL;
 	}
 	else {
@@ -473,7 +473,7 @@ extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_
 	auto FindMovTag = UtilMemMem(PAGEBase, PAGESize, patternCode, sizeof(patternCode) - 1);
 
 	if (!FindMovTag) {
-		DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_ERROR_LEVEL, "mov r8d, 'TFRA' sig not found!\n");
+		Print("mov r8d, 'TFRA' sig not found!\n");
 		return STATUS_UNSUCCESSFUL;
 	}
 	else {
