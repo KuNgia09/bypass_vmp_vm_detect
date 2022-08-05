@@ -12,7 +12,7 @@ This tool is aimed to bypass Vmp vmware detection (Tested on Vmp3.6), it patches
 
 ## Vmp check vm mechanism
 
-Vmp check virtual machine through 2 ways
+Vmp check virtual machine in 2 ways
 
 - use `cpuid` instruction check
 - check firmware table from the firmware table provider
