@@ -4,7 +4,7 @@
 
 ## What it does
 
-This tool is aimed to bypass Vmp vmware detect (Tested on Vmp3.6), it patches `SystemFirmwareTable` at runtime, it removes all detectable signatures like **"VMware" "Virtual" "VMWARE"**.
+This tool is aimed to bypass Vmp vmware detection (Tested on Vmp3.6), it patches `SystemFirmwareTable` at runtime, it removes all detectable signatures like **"VMware" "Virtual" "VMWARE"**.
 
 
 
