@@ -7,19 +7,6 @@
 
 
 
-typedef struct
-{
-	PVOID base;
-	size_t max_insts;
-	int max_depth;
-	
-	
-
-	PVOID lea_rcx_imm;
-	PUCHAR lea_rcx_addr;
-	PVOID pfn_ExAcquireResourceSharedLite;
-	int call_ExAcquireResourceSharedLite_inst;
-}LocateExpFirmwareTableContext;
 
 
 
@@ -37,10 +24,11 @@ typedef NTSTATUS(__cdecl* PFNFTH)(PSYSTEM_FIRMWARE_TABLE_INFORMATION);
 PFNFTH g_OriginalACPIHandler = NULL;
 PFNFTH g_OriginalRSMBHandler = NULL;
 PFNFTH g_OriginalFIRMHandler = NULL;
-ULONG_PTR g_diasmBranchList=0;
+ULONG_PTR g_diasmBranchBuffer=0;
 int g_diasmBranchIndex=0;
 
-_Use_decl_annotations_ void* UtilGetSystemProcAddress(
+
+void* UtilGetSystemProcAddress(
 	const wchar_t* proc_name) {
 	PAGED_CODE();
 
@@ -50,7 +38,7 @@ _Use_decl_annotations_ void* UtilGetSystemProcAddress(
 }
 
 
-_Use_decl_annotations_ void* UtilMemMem(const void* search_base,
+ void* UtilMemMem(const void* search_base,
 	SIZE_T search_size, const void* pattern,
 	SIZE_T pattern_size) {
 	if (pattern_size > search_size) {
@@ -208,30 +196,21 @@ NTSTATUS EnumSystemModules(fnEnumSystemModuleCallback callback, PVOID Context)
 	return Status;
 }
 
-bool LocateExpFirmwareTableHandler(ULONG_PTR address, ZydisDecodedInstruction* instruction, ZydisDecodedOperand* operands) {
-	UNREFERENCED_PARAMETER(address);
-	UNREFERENCED_PARAMETER(instruction);
-	UNREFERENCED_PARAMETER(operands);
 
 
-
-	return true;
-}
-
-
-bool CheckSameBranch(ULONG_PTR address) {
-	if (g_diasmBranchIndex >= 0x1000 / sizeof(ULONG_PTR)) {
+bool CheckSameDestJccBranch(ULONG_PTR address) {
+	if (g_diasmBranchIndex >= (0x1000 / sizeof(ULONG_PTR))) {
 		return true;
 	}
 	for (int i = 0; i < g_diasmBranchIndex; i++) {
-		ULONG_PTR temp = *(ULONG_PTR*)(g_diasmBranchList + i * sizeof(ULONG_PTR));
+		ULONG_PTR temp = *(ULONG_PTR*)(g_diasmBranchBuffer + i * sizeof(ULONG_PTR));
 		if (temp == address) {
 			Print("Find same branch address:%p\n", address);
 			return true;
 		}
 	}
 	
-	*(ULONG_PTR*)(g_diasmBranchList + g_diasmBranchIndex * sizeof(ULONG_PTR))=address;
+	*(ULONG_PTR*)(g_diasmBranchBuffer + g_diasmBranchIndex * sizeof(ULONG_PTR))=address;
 	g_diasmBranchIndex++;
 	return false;
 }
@@ -293,7 +272,7 @@ NTSTATUS DiasmRangeWalk(ULONG_PTR diasmAddress,ULONG diasmSize,int depth) {
 				if (ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, &operands[1], runtime_address, &calcAddress))){
 					lea_rcx_address = runtime_address;
 					lea_rcx_imm = calcAddress;
-					Print("%p %s LEA imm value:%p\n", runtime_address, &printBuffer[0], lea_rcx_imm);
+					//Print("%p %s LEA imm value:%p\n", runtime_address, &printBuffer[0], lea_rcx_imm);
 				}
 				
 			}
@@ -307,7 +286,7 @@ NTSTATUS DiasmRangeWalk(ULONG_PTR diasmAddress,ULONG diasmSize,int depth) {
 			if (lea_rcx_address && (int)(runtime_address - lea_rcx_address) < 20) {
 				if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
 					if (ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, &operands[0], runtime_address, &calcAddress))) {
-						Print("%p  %s call calcAddress:%p\n", runtime_address, &printBuffer[0], calcAddress);
+						//Print("%p  %s call calcAddress:%p\n", runtime_address, &printBuffer[0], calcAddress);
 						if (calcAddress == g_ExAcquireResourceSharedLite_address) {
 							g_ExpFirmwareTableResource_address = lea_rcx_imm;
 							Print("g_ExpFirmwareTableResource_address :%p\n", g_ExpFirmwareTableResource_address);
@@ -341,9 +320,9 @@ NTSTATUS DiasmRangeWalk(ULONG_PTR diasmAddress,ULONG diasmSize,int depth) {
 			
 			if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
 				if (ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, &operands[0], runtime_address, &calcAddress))) {
-					Print("instruction %p:%s,Jcc imm:%p\n", runtime_address, &printBuffer[0],calcAddress);
+					//Print("instruction %p:%s,Jcc imm:%p\n", runtime_address, &printBuffer[0],calcAddress);
 					if (calcAddress >= (ULONG_PTR)g_NtosBase && calcAddress < (ULONG_PTR)g_NtosEnd) {
-						if (!CheckSameBranch(calcAddress)) {
+						if (!CheckSameDestJccBranch(calcAddress)) {
 							
 							int temp = depth + 1;
 							Print("recurisve DiasmRangWalk at %p,depth£º%d\n", calcAddress,temp);
@@ -409,8 +388,8 @@ VOID SampleUnload(
 		ExReleaseResourceLite((PERESOURCE)g_ExpFirmwareTableResource_address);
 	}
 
-	if (g_diasmBranchList != NULL) {
-		ExFreePoolWithTag((PVOID)g_diasmBranchList, '1gaT');
+	if (g_diasmBranchBuffer != NULL) {
+		ExFreePoolWithTag((PVOID)g_diasmBranchBuffer, '1gaT');
 	}
 	
 	return;
@@ -419,14 +398,8 @@ VOID SampleUnload(
 extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath) {
 	UNREFERENCED_PARAMETER(DriverObject);
 	UNREFERENCED_PARAMETER(RegistryPath);
-
 	DriverObject->DriverUnload = SampleUnload;
-	
-
 	PVOID checkPtr = UtilGetSystemProcAddress(L"NtOpenFile");
-
-	
-
 
 	Print("NtOpenFile address:%p\n", checkPtr);
 
@@ -479,8 +452,8 @@ extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_
 	else {
 		Print("mov r8d, 'TFRA' address:%p", FindMovTag);
 	}
-	g_diasmBranchList=(ULONG_PTR)ExAllocatePoolWithTag(NonPagedPool, 0x1000, '1gaT');
-	if (g_diasmBranchList == NULL) {
+	g_diasmBranchBuffer=(ULONG_PTR)ExAllocatePoolWithTag(NonPagedPool, 0x1000, '1gaT');
+	if (g_diasmBranchBuffer == NULL) {
 		Print("ExAllocatePoolWithTag failed");
 	}
 
