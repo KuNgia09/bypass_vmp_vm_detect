@@ -408,6 +408,10 @@ VOID SampleUnload(
 
 		ExReleaseResourceLite((PERESOURCE)g_ExpFirmwareTableResource_address);
 	}
+
+	if (g_diasmBranchList != NULL) {
+		ExFreePoolWithTag((PVOID)g_diasmBranchList, '1gaT');
+	}
 	
 	return;
 }
