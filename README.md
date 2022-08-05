@@ -1,17 +1,27 @@
-# bypass vmp vm detect
+# Bypass Vmp vm detect
 
-This tool is aimed to bypass vmp vmware detect (Tested vmp3.6)
 
-vmp check virtual machine through 2 ways
+
+## What it does
+
+This tool is aimed to bypass Vmp vmware detect (Tested on Vmp3.6), it patches `SystemFirmwareTable` at runtime, it removes all detectable signatures like **"VMware" "Virtual" "VMWARE"**.
+
+
+
+
+
+## Vmp check vm mechanism
+
+Vmp check virtual machine through 2 ways
 
 - use `cpuid` instruction check
 - check firmware table from the firmware table provider
 
 
 
-## bypass cpuid check
+## Bypass cpuid check
 
-edit vmware `.vmx` file,add the following code
+Edit vmware `.vmx` file,add the following code
 
 ```code
 hypervisor.cpuid.v0 = "FALSE"
@@ -19,7 +29,20 @@ hypervisor.cpuid.v0 = "FALSE"
 
 
 
-## bypass firmware table check
 
-install vmp_vm_detect driver
 
+## Build
+
+Visual Studio 2019 and WDK 10
+
+## Bypass firmware table check
+
+Install our driver to patch `SystemFirmwareTable`
+
+
+
+## Thanks
+
+[https://github.com/hzqst/VmwareHardenedLoader](https://github.com/hzqst/VmwareHardenedLoader)
+
+[Zydis](https://github.com/zyantific/zydis.git)
